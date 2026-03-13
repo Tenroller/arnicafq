@@ -18,3 +18,7 @@ models/
 .pytest_cache/
 .mypy_cache/
 *.log
+backend/uploads/
+backend/outputs/
+frontend/node_modules/
+frontend/dist/

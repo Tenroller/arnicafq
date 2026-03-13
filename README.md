@@ -1,6 +1,6 @@
 # Soccer Analytics
 
-Automated soccer video analysis pipeline — detects players and the ball, tracks them across frames, classifies teams by jersey color, computes game statistics, and produces an annotated output video with overlays.
+Automated soccer video analysis — detects players and the ball, tracks them across frames, classifies teams by jersey color, computes game statistics, and produces an annotated output video. Available as a **CLI tool** and a **Web UI** powered by FastAPI + React.
 
 ## Features
 
@@ -10,18 +10,50 @@ Automated soccer video analysis pipeline — detects players and the ball, track
 - **Game Analytics** — Ball possession, per-player stats (distance, speed, sprints), event detection (passes, shots, goals)
 - **Annotated Output** — Bounding boxes, team colors, movement traces, heatmap, possession bar overlay
 - **JSON Export** — Full analytics data saved alongside the output video
+- **Web UI** — Upload videos, start analysis jobs, and view results in the browser
+
+## Repo Structure
+
+```
+├── backend/
+│   ├── config/
+│   │   └── default.yaml              # Default configuration
+│   ├── src/soccer_analytics/
+│   │   ├── api/                       # FastAPI REST API
+│   │   │   ├── app.py                 # Application factory
+│   │   │   ├── routes.py              # API endpoints
+│   │   │   ├── schemas.py             # Pydantic models
+│   │   │   └── jobs.py                # Background job runner
+│   │   ├── analytics.py               # Game analytics
+│   │   ├── annotation.py              # Video annotation
+│   │   ├── cli.py                     # CLI interface
+│   │   ├── config.py                  # Configuration loader
+│   │   ├── detection.py               # Object detection
+│   │   ├── pipeline.py                # Two-phase processing pipeline
+│   │   ├── team_classifier.py         # Jersey color classification
+│   │   └── tracking.py                # ByteTrack tracker
+│   ├── tests/                         # pytest test suite
+│   ├── main.py                        # CLI entry point
+│   └── pyproject.toml                 # Python project metadata
+├── frontend/
+│   ├── src/                           # React + Tailwind app
+│   ├── package.json
+│   └── vite.config.js
+└── README.md
+```
 
 ## Requirements
 
 - Python 3.10+
+- Node.js 18+ (for the frontend)
 - [Roboflow API key](https://roboflow.com/settings/api-key)
 
 ## Setup
 
+### Backend
+
 ```bash
-# Clone the repo
-git clone https://github.com/Tenroller/arnicafq.git
-cd arnicafq
+cd backend
 
 # Install dependencies (using uv)
 uv sync
@@ -33,44 +65,63 @@ pip install -e .
 echo "ROBOFLOW_API_KEY=your_key_here" > .env
 ```
 
-## Usage
+### Frontend
 
 ```bash
+cd frontend
+npm install
+```
+
+## CLI Usage
+
+Run from the `backend/` directory:
+
+```bash
+cd backend
+
 # Basic usage
-python main.py input.mp4
+source .env && python main.py input.mp4
 
 # Specify output path
-python main.py input.mp4 -o output.mp4
+source .env && python main.py input.mp4 -o output.mp4
 
 # Custom config file
-python main.py input.mp4 -c config/custom.yaml
+source .env && python main.py input.mp4 -c config/custom.yaml
 
 # Override detection confidence
-python main.py input.mp4 --confidence 0.5
+source .env && python main.py input.mp4 --confidence 0.5
 
 # Disable overlays
-python main.py input.mp4 --no-heatmap --no-traces
+source .env && python main.py input.mp4 --no-heatmap --no-traces
 ```
 
-Load the `.env` file before running if your shell doesn't auto-load it:
-
-```bash
-source .env && python main.py input.mp4 -o output.mp4
-```
-
-### Output
-
-The pipeline produces:
+### CLI Output
 
 | Output | Description |
 |--------|-------------|
 | `output.mp4` | Annotated video with bounding boxes, team colors, traces, heatmap, and possession bar |
-| `output.json` | JSON file with possession %, player stats, and detected events |
-| Console report | Summary printed to terminal after processing |
+| `output.json` | Possession %, player stats, and detected events |
+| Console report | Summary printed to terminal |
+
+## Web UI Usage
+
+Start both the API and frontend dev server in separate terminals:
+
+```bash
+# Terminal 1 — API
+cd backend
+source .env && uv run uvicorn soccer_analytics.api.app:app --reload --port 8000
+
+# Terminal 2 — Frontend
+cd frontend
+npm run dev
+```
+
+Then open the URL printed by Vite (typically `http://localhost:5173`).
 
 ## Configuration
 
-All settings live in `config/default.yaml`:
+All settings live in `backend/config/default.yaml`:
 
 ```yaml
 detection:
@@ -110,40 +161,10 @@ analytics:
   overlay_stats: true
 ```
 
-## Project Structure
-
-```
-├── config/
-│   └── default.yaml          # Default configuration
-├── src/soccer_analytics/
-│   ├── analytics.py           # Game analytics (possession, stats, events)
-│   ├── annotation.py          # Video annotation with overlays
-│   ├── cli.py                 # Command-line interface
-│   ├── config.py              # Configuration dataclasses + YAML loader
-│   ├── detection.py           # Roboflow object detection
-│   ├── pipeline.py            # Two-phase processing pipeline
-│   ├── team_classifier.py     # KMeans jersey color classification
-│   └── tracking.py            # ByteTrack multi-object tracking
-├── tests/
-│   ├── test_analytics.py      # Analytics module tests
-│   ├── test_detection.py      # Detection tests
-│   ├── test_pipeline.py       # Pipeline integration test
-│   ├── test_team_classifier.py# Team classifier tests
-│   └── test_tracking.py       # Tracker tests
-├── main.py                    # Entry point
-└── pyproject.toml             # Project metadata and dependencies
-```
-
-## Pipeline
-
-The pipeline runs in two phases:
-
-1. **Calibration** — Runs detection on the first N frames to collect jersey color samples, then fits a KMeans model to distinguish teams.
-2. **Full Processing** — For each frame: detect players/ball, track, classify teams, compute analytics, annotate, and write to output video. After all frames, prints a report and saves analytics to JSON.
-
 ## Tests
 
 ```bash
+cd backend
 uv run pytest tests/ -v
 ```
 

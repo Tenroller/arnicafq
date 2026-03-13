@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 import supervision as sv
@@ -13,7 +14,12 @@ from soccer_analytics.annotation import VideoAnnotator
 from soccer_analytics.analytics import GameAnalytics
 
 
-def run(input_path: str, output_path: str, config: Config) -> None:
+def run(
+    input_path: str,
+    output_path: str,
+    config: Config,
+    progress_callback: Callable[[str, int, int], None] | None = None,
+) -> dict | None:
     """Run the full soccer analysis pipeline.
 
     Phase 1: Calibration — detect players on first N frames to fit team classifier.
@@ -44,7 +50,10 @@ def run(input_path: str, output_path: str, config: Config) -> None:
             break
         player_dets, _ = detector.detect(frame)
         team_classifier.accumulate(frame, player_dets)
-        _progress(i + 1, calibration_frames, "Calibrating")
+        if progress_callback:
+            progress_callback("calibrating", i + 1, calibration_frames)
+        else:
+            _progress(i + 1, calibration_frames, "Calibrating")
 
     print()
     team_classifier.fit()
@@ -89,18 +98,33 @@ def run(input_path: str, output_path: str, config: Config) -> None:
             )
             sink.write_frame(annotated)
 
-            _progress(i + 1, total_frames, "Processing")
+            if progress_callback:
+                progress_callback("processing", i + 1, total_frames)
+            else:
+                _progress(i + 1, total_frames, "Processing")
 
-    print()
+    if not progress_callback:
+        print()
 
+    analytics_result: dict | None = None
     if analytics is not None:
-        analytics.report()
+        analytics_result = {
+            "possession": analytics.get_possession(),
+            "player_stats": analytics.get_player_stats(),
+            "events": analytics.get_events(),
+        }
+        if not progress_callback:
+            analytics.report()
         if config.analytics.save_json:
             json_path = str(Path(output_path).with_suffix(".json"))
             analytics.save_json(json_path)
-            print(f"Analytics JSON saved to: {json_path}")
+            if not progress_callback:
+                print(f"Analytics JSON saved to: {json_path}")
 
-    print(f"Done! Output saved to: {output_path}")
+    if not progress_callback:
+        print(f"Done! Output saved to: {output_path}")
+
+    return analytics_result
 
 
 def _progress(current: int, total: int, label: str) -> None:
