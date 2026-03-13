@@ -1,0 +1,35 @@
+detection:
+  model_id: "football-players-detection-3zvbc/2"
+  confidence: 0.3
+
+tracking:
+  track_activation_threshold: 0.25
+  lost_track_buffer: 30
+  minimum_matching_threshold: 0.8
+  frame_rate: 30
+
+team_classification:
+  calibration_frames: 50
+  n_clusters: 2
+  jersey_crop_ratio: 0.4  # top portion of bbox for jersey color
+
+annotation:
+  team_colors:
+    - [0, 0, 255]    # red (BGR)
+    - [255, 0, 0]    # blue (BGR)
+  ball_color: [0, 255, 255]  # yellow (BGR)
+  trace_length: 60
+  thickness: 2
+  show_traces: true
+  show_heatmap: true
+
+analytics:
+  enabled: true
+  possession_distance_threshold: 150.0  # max px distance to consider "near ball"
+  sprint_speed_threshold: 15.0          # px/frame for sprint detection
+  pass_max_distance: 200.0
+  pass_min_frames: 5
+  shot_velocity_threshold: 30.0
+  goal_edge_margin: 0.05
+  save_json: true
+  overlay_stats: true
